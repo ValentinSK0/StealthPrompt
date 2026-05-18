@@ -6,6 +6,15 @@ public static class BluetoothIconFactory
 {
     public static Icon Create()
     {
+        var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", "250px-Bluetooth.svg.png");
+        if (File.Exists(assetPath))
+        {
+            using var image = Image.FromFile(assetPath);
+            using var assetBitmap = new Bitmap(image, new Size(256, 256));
+            var assetHandle = assetBitmap.GetHicon();
+            return Icon.FromHandle(assetHandle);
+        }
+
         using var bitmap = new Bitmap(256, 256);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
