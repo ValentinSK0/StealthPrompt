@@ -166,13 +166,13 @@ public sealed class TrayAppContext : ApplicationContext
         try
         {
             _settingsOpen = true;
-            using var form = new SettingsForm(CloneSettings(_settings));
-            if (form.ShowDialog() != DialogResult.OK)
+            var settingsResult = ShowSettingsDialogWithRetry();
+            if (settingsResult.Result != DialogResult.OK || settingsResult.Settings is null)
             {
                 return;
             }
 
-            _settings = form.Settings;
+            _settings = settingsResult.Settings;
             _configStore.Save(_settings);
             _notifyIcon.Visible = _settings.TrayIcon;
             RegisterHotkeys();
@@ -180,13 +180,57 @@ public sealed class TrayAppContext : ApplicationContext
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode is 8 or 158)
         {
-            _logs.WriteCaptureError("Settings", "Could not open Settings because Windows could not create a window handle. " + ex.Message);
+            LogSettingsError(ex);
             SetStatus("Settings handle error");
+            _notifyIcon.Visible = true;
+            _notifyIcon.ShowBalloonTip(
+                5000,
+                "Stealth Prompt",
+                "Settings could not open because Windows refused a window handle. The app stayed running; try again.",
+                ToolTipIcon.Warning);
+        }
+        catch (Exception ex)
+        {
+            LogSettingsError(ex);
+            SetStatus("Settings error");
+            _notifyIcon.Visible = true;
+            _notifyIcon.ShowBalloonTip(
+                5000,
+                "Stealth Prompt",
+                "Settings failed to open. Error was written to Logs.",
+                ToolTipIcon.Warning);
         }
         finally
         {
             _settingsOpen = false;
         }
+    }
+
+    private (DialogResult Result, AppSettings? Settings) ShowSettingsDialogWithRetry()
+    {
+        try
+        {
+            return ShowSettingsDialogOnce();
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode is 8 or 158)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            return ShowSettingsDialogOnce();
+        }
+    }
+
+    private (DialogResult Result, AppSettings? Settings) ShowSettingsDialogOnce()
+    {
+        using var form = new SettingsForm(CloneSettings(_settings));
+        var result = form.ShowDialog();
+        return (result, result == DialogResult.OK ? form.Settings : null);
+    }
+
+    private void LogSettingsError(Exception ex)
+    {
+        _logs.WriteCaptureError("Settings", ex.GetType().Name + ": " + ex.Message);
     }
 
     private void QueueShowSettings(ContextMenuStrip menu)

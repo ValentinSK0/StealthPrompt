@@ -6,6 +6,7 @@ static class Program
     static void Main()
     {
         ApplicationConfiguration.Initialize();
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += (_, e) => HandleUnhandledException(e.Exception, showMessage: true);
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
