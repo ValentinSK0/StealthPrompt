@@ -138,13 +138,15 @@ public sealed class SettingsForm : Form
         var buttons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            Padding = new Padding(0, 6, 0, 0),
+            WrapContents = false
         };
-        var save = new Button { Text = "Save", DialogResult = DialogResult.OK, Width = 90 };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 90 };
+        var save = StyleButton(new Button { Text = "Save", DialogResult = DialogResult.OK }, 104);
+        var cancel = StyleButton(new Button { Text = "Cancel", DialogResult = DialogResult.Cancel }, 104);
         buttons.Controls.Add(save);
         buttons.Controls.Add(cancel);
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         root.Controls.Add(buttons, 0, 11);
         root.SetColumnSpan(buttons, 2);
 
@@ -233,10 +235,11 @@ public sealed class SettingsForm : Form
             ColumnCount = 3
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
 
         apiKey.Dock = DockStyle.Fill;
+        StyleButton(saveApiKey, 68);
         saveApiKey.Dock = DockStyle.Fill;
         apiKeyStatus.Dock = DockStyle.Fill;
         saveApiKey.Click += (_, _) => SaveApiKeyFromField(provider, apiKey, apiKeyStatus);
@@ -245,6 +248,21 @@ public sealed class SettingsForm : Form
         panel.Controls.Add(saveApiKey, 1, 0);
         panel.Controls.Add(apiKeyStatus, 2, 0);
         root.Controls.Add(panel, 1, row);
+    }
+
+    private static Button StyleButton(Button button, int width)
+    {
+        button.Width = width;
+        button.Height = 32;
+        button.Margin = new Padding(8, 0, 0, 0);
+        button.Padding = new Padding(8, 2, 8, 2);
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 1;
+        button.FlatAppearance.BorderColor = Color.FromArgb(70, 120, 190);
+        button.BackColor = Color.White;
+        button.ForeColor = Color.Black;
+        button.UseVisualStyleBackColor = false;
+        return button;
     }
 
     private static void AddRow(TableLayoutPanel root, int row, string label, Control control, int height)
