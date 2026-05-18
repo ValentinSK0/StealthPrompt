@@ -5,6 +5,21 @@ namespace StealthPrompt;
 public sealed class ConfigStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly HashSet<string> GroqModels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "allam-2-7b",
+        "groq/compound",
+        "groq/compound-mini",
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-prompt-guard-2-22m",
+        "meta-llama/llama-prompt-guard-2-86m",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-safeguard-20b",
+        "qwen/qwen3-32b",
+    };
     private readonly string _configPath;
 
     public ConfigStore()
@@ -55,18 +70,32 @@ public sealed class ConfigStore
             settings.Provider = "groq";
         }
 
-        if (settings.Provider.Equals("openai", StringComparison.OrdinalIgnoreCase) &&
-            settings.Model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase) &&
-            CredentialStore.HasApiKey("groq"))
+        if (settings.Provider.Equals("openai", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.Provider = CredentialStore.HasApiKey("gemini") ? "gemini" : "groq";
+        }
+
+        if (!settings.Provider.Equals("groq", StringComparison.OrdinalIgnoreCase) &&
+            !settings.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
         {
             settings.Provider = "groq";
         }
 
         if (settings.Provider.Equals("groq", StringComparison.OrdinalIgnoreCase) &&
             (string.IsNullOrWhiteSpace(settings.Model) ||
-             settings.Model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase)))
+             settings.Model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase) ||
+             settings.Model.StartsWith("gemini-", StringComparison.OrdinalIgnoreCase) ||
+             !GroqModels.Contains(settings.Model)))
         {
             settings.Model = "llama-3.3-70b-versatile";
+        }
+
+        if (settings.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase) &&
+            (string.IsNullOrWhiteSpace(settings.Model) ||
+             settings.Model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase) ||
+             settings.Model.StartsWith("llama-", StringComparison.OrdinalIgnoreCase)))
+        {
+            settings.Model = "gemini-2.5-flash";
         }
 
         if (string.IsNullOrWhiteSpace(settings.HrdbHotkey))

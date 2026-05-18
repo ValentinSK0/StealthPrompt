@@ -2,18 +2,36 @@ namespace StealthPrompt;
 
 public sealed class SettingsForm : Form
 {
-    private readonly TextBox _apiKey = new() { UseSystemPasswordChar = true };
-    private readonly Button _saveApiKey = new() { Text = "Save API key now" };
-    private readonly Label _apiKeyStatus = new() { TextAlign = ContentAlignment.MiddleLeft };
+    private readonly TextBox _groqApiKey = new() { UseSystemPasswordChar = true, PlaceholderText = "gsk_..." };
+    private readonly TextBox _geminiApiKey = new() { UseSystemPasswordChar = true, PlaceholderText = "AIza..." };
+    private readonly Button _saveGroqApiKey = new() { Text = "Save" };
+    private readonly Button _saveGeminiApiKey = new() { Text = "Save" };
+    private readonly Label _groqApiKeyStatus = new() { TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Label _geminiApiKeyStatus = new() { TextAlign = ContentAlignment.MiddleLeft };
     private readonly ComboBox _provider = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _hotkey = new();
     private readonly TextBox _hrdbHotkey = new();
     private readonly TextBox _hrdbPath = new();
-    private readonly TextBox _model = new();
+    private readonly ComboBox _model = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly NumericUpDown _timeout = new() { Minimum = 5000, Maximum = 120000, Increment = 1000 };
     private readonly CheckBox _preserveClipboard = new() { Text = "Preserve clipboard during capture" };
     private readonly CheckBox _showToast = new() { Text = "Show status notifications" };
     private readonly CheckBox _debugMode = new() { Text = "Debug Alt+K before sending" };
+    private static readonly string[] GroqModels =
+    [
+        "allam-2-7b",
+        "groq/compound",
+        "groq/compound-mini",
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "meta-llama/llama-prompt-guard-2-22m",
+        "meta-llama/llama-prompt-guard-2-86m",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-safeguard-20b",
+        "qwen/qwen3-32b",
+    ];
 
     public SettingsForm(AppSettings settings)
     {
@@ -23,9 +41,10 @@ public sealed class SettingsForm : Form
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        ClientSize = new Size(620, 430);
+        ClientSize = new Size(620, 460);
 
-        _provider.Items.AddRange(["groq", "openai"]);
+        _provider.Items.AddRange(["groq", "gemini"]);
+        _model.Items.AddRange(GroqModels);
         LoadSettings(settings);
         BuildLayout();
     }
@@ -41,12 +60,13 @@ public sealed class SettingsForm : Form
         }
         _provider.SelectedIndexChanged += (_, _) => ApplyProviderDefaults();
 
-        _apiKey.PlaceholderText = CredentialStore.HasApiKey(settings.Provider) ? "API key already saved; paste new key to replace" : "gsk_...";
-        _apiKeyStatus.Text = CredentialStore.HasApiKey(settings.Provider) ? "Saved" : "Missing";
+        UpdateApiKeyStatus("groq", _groqApiKey, _groqApiKeyStatus);
+        UpdateApiKeyStatus("gemini", _geminiApiKey, _geminiApiKeyStatus);
         _hotkey.Text = settings.Hotkey;
         _hrdbHotkey.Text = settings.HrdbHotkey;
         _hrdbPath.Text = settings.HrdbPath;
-        _model.Text = settings.Model;
+        SetSelectedModel(settings.Model);
+        ApplyProviderDefaults();
 
         _timeout.Value = Math.Clamp(settings.TimeoutMs, (int)_timeout.Minimum, (int)_timeout.Maximum);
         _preserveClipboard.Checked = settings.PreserveClipboard;
@@ -57,16 +77,36 @@ public sealed class SettingsForm : Form
     private void ApplyProviderDefaults()
     {
         var provider = _provider.Text;
-        _apiKey.PlaceholderText = provider == "groq" ? "gsk_..." : "sk-...";
-        _apiKeyStatus.Text = CredentialStore.HasApiKey(provider) ? "Saved" : "Missing";
 
-        if (provider == "groq" && _model.Text.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase))
+        if (provider == "groq")
         {
-            _model.Text = "llama-3.3-70b-versatile";
+            _model.Enabled = true;
+            if (_model.Items.Count != GroqModels.Length)
+            {
+                _model.Items.Clear();
+                _model.Items.AddRange(GroqModels);
+            }
+
+            if (_model.SelectedIndex < 0 || _model.Text.StartsWith("gemini-", StringComparison.OrdinalIgnoreCase))
+            {
+                SetSelectedModel("llama-3.3-70b-versatile");
+            }
         }
-        else if (provider == "openai" && _model.Text.StartsWith("llama-", StringComparison.OrdinalIgnoreCase))
+        else if (provider == "gemini")
         {
-            _model.Text = "gpt-5.5";
+            _model.Items.Clear();
+            _model.Items.Add("gemini-2.5-flash");
+            _model.SelectedIndex = 0;
+            _model.Enabled = false;
+        }
+    }
+
+    private void SetSelectedModel(string model)
+    {
+        _model.SelectedItem = model;
+        if (_model.SelectedIndex < 0)
+        {
+            _model.SelectedItem = "llama-3.3-70b-versatile";
         }
     }
 
@@ -76,23 +116,24 @@ public sealed class SettingsForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 11,
+            RowCount = 12,
             Padding = new Padding(12),
             AutoSize = false
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        AddApiKeyRow(root, 0);
-        AddRow(root, 1, "Provider", _provider, 32);
-        AddRow(root, 2, "Hotkey", _hotkey, 32);
-        AddRow(root, 3, "HRDB hotkey", _hrdbHotkey, 32);
-        AddRow(root, 4, "HRDB path", _hrdbPath, 32);
-        AddRow(root, 5, "Model", _model, 32);
-        AddRow(root, 6, "Timeout ms", _timeout, 32);
-        AddRow(root, 7, "", _preserveClipboard, 32);
-        AddRow(root, 8, "", _showToast, 32);
-        AddRow(root, 9, "", _debugMode, 32);
+        AddApiKeyRow(root, 0, "Groq API key", "groq", _groqApiKey, _saveGroqApiKey, _groqApiKeyStatus);
+        AddApiKeyRow(root, 1, "Gemini API key", "gemini", _geminiApiKey, _saveGeminiApiKey, _geminiApiKeyStatus);
+        AddRow(root, 2, "Provider", _provider, 32);
+        AddRow(root, 3, "Hotkey", _hotkey, 32);
+        AddRow(root, 4, "HRDB hotkey", _hrdbHotkey, 32);
+        AddRow(root, 5, "HRDB path", _hrdbPath, 32);
+        AddRow(root, 6, "Model", _model, 32);
+        AddRow(root, 7, "Timeout ms", _timeout, 32);
+        AddRow(root, 8, "", _preserveClipboard, 32);
+        AddRow(root, 9, "", _showToast, 32);
+        AddRow(root, 10, "", _debugMode, 32);
 
         var buttons = new FlowLayoutPanel
         {
@@ -104,7 +145,7 @@ public sealed class SettingsForm : Form
         buttons.Controls.Add(save);
         buttons.Controls.Add(cancel);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        root.Controls.Add(buttons, 0, 10);
+        root.Controls.Add(buttons, 0, 11);
         root.SetColumnSpan(buttons, 2);
 
         AcceptButton = save;
@@ -112,9 +153,16 @@ public sealed class SettingsForm : Form
         Controls.Add(root);
     }
 
-    private void SaveApiKeyFromField()
+    private static void UpdateApiKeyStatus(string provider, TextBox apiKey, Label status)
     {
-        if (string.IsNullOrWhiteSpace(_apiKey.Text))
+        var saved = CredentialStore.HasApiKey(provider);
+        apiKey.PlaceholderText = saved ? "API key already saved; paste new key to replace" : apiKey.PlaceholderText;
+        status.Text = saved ? "Saved" : "Missing";
+    }
+
+    private void SaveApiKeyFromField(string provider, TextBox apiKey, Label status)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey.Text))
         {
             MessageBox.Show(this, "Paste API key first.", "Missing API key", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
@@ -122,9 +170,10 @@ public sealed class SettingsForm : Form
 
         try
         {
-            CredentialStore.SaveApiKey(_apiKey.Text.Trim(), _provider.Text);
-            _apiKey.Clear();
-            _apiKeyStatus.Text = "Saved";
+            CredentialStore.SaveApiKey(apiKey.Text.Trim(), provider);
+            apiKey.Clear();
+            status.Text = "Saved";
+            apiKey.PlaceholderText = "API key already saved; paste new key to replace";
             MessageBox.Show(this, "API key saved.", "Stealth Prompt", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
@@ -145,7 +194,9 @@ public sealed class SettingsForm : Form
                 Settings.Hotkey = _hotkey.Text.Trim();
                 Settings.HrdbHotkey = _hrdbHotkey.Text.Trim();
                 Settings.HrdbPath = _hrdbPath.Text.Trim();
-                Settings.Model = _model.Text.Trim();
+                Settings.Model = Settings.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase)
+                    ? "gemini-2.5-flash"
+                    : _model.Text.Trim();
                 Settings.TimeoutMs = (int)_timeout.Value;
                 Settings.PreserveClipboard = _preserveClipboard.Checked;
                 Settings.ShowToast = _showToast.Checked;
@@ -166,12 +217,12 @@ public sealed class SettingsForm : Form
         base.OnFormClosing(e);
     }
 
-    private void AddApiKeyRow(TableLayoutPanel root, int row)
+    private void AddApiKeyRow(TableLayoutPanel root, int row, string label, string provider, TextBox apiKey, Button saveApiKey, Label apiKeyStatus)
     {
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         root.Controls.Add(new Label
         {
-            Text = "API key",
+            Text = label,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft
         }, 0, row);
@@ -182,17 +233,17 @@ public sealed class SettingsForm : Form
             ColumnCount = 3
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
 
-        _apiKey.Dock = DockStyle.Fill;
-        _saveApiKey.Dock = DockStyle.Fill;
-        _apiKeyStatus.Dock = DockStyle.Fill;
-        _saveApiKey.Click += (_, _) => SaveApiKeyFromField();
+        apiKey.Dock = DockStyle.Fill;
+        saveApiKey.Dock = DockStyle.Fill;
+        apiKeyStatus.Dock = DockStyle.Fill;
+        saveApiKey.Click += (_, _) => SaveApiKeyFromField(provider, apiKey, apiKeyStatus);
 
-        panel.Controls.Add(_apiKey, 0, 0);
-        panel.Controls.Add(_saveApiKey, 1, 0);
-        panel.Controls.Add(_apiKeyStatus, 2, 0);
+        panel.Controls.Add(apiKey, 0, 0);
+        panel.Controls.Add(saveApiKey, 1, 0);
+        panel.Controls.Add(apiKeyStatus, 2, 0);
         root.Controls.Add(panel, 1, row);
     }
 

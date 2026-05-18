@@ -25,7 +25,7 @@ public sealed class DebugPromptForm : Form
 
         root.Controls.Add(new Label { Text = "Captured selected text", Dock = DockStyle.Fill }, 0, 0);
         root.Controls.Add(ReadOnlyBox(selectedText), 0, 1);
-        root.Controls.Add(new Label { Text = "Prompt sent to OpenAI", Dock = DockStyle.Fill }, 0, 2);
+        root.Controls.Add(new Label { Text = "Prompt sent to AI provider", Dock = DockStyle.Fill }, 0, 2);
         root.Controls.Add(ReadOnlyBox(prompt), 0, 3);
 
         var buttons = new FlowLayoutPanel
@@ -33,7 +33,7 @@ public sealed class DebugPromptForm : Form
             FlowDirection = FlowDirection.RightToLeft,
             Dock = DockStyle.Fill
         };
-        var send = new Button { Text = "Send to GPT", DialogResult = DialogResult.OK, Width = 110 };
+        var send = new Button { Text = "Send", DialogResult = DialogResult.OK, Width = 110 };
         var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 90 };
         buttons.Controls.Add(send);
         buttons.Controls.Add(cancel);

@@ -41,9 +41,17 @@ public static class CredentialStore
         var target = GetTarget(provider);
         if (!CredRead(target, CredTypeGeneric, 0, out var credentialPtr))
         {
-            return provider.Equals("groq", StringComparison.OrdinalIgnoreCase)
-                ? Environment.GetEnvironmentVariable("GROQ_API_KEY")
-                : Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+            if (provider.Equals("groq", StringComparison.OrdinalIgnoreCase))
+            {
+                return Environment.GetEnvironmentVariable("GROQ_API_KEY");
+            }
+
+            if (provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
+            {
+                return Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            }
+
+            return null;
         }
 
         try
@@ -66,8 +74,8 @@ public static class CredentialStore
 
     private static string GetTarget(string provider)
     {
-        return provider.Equals("openai", StringComparison.OrdinalIgnoreCase)
-            ? "StealthPrompt.OpenAI.ApiKey"
+        return provider.Equals("gemini", StringComparison.OrdinalIgnoreCase)
+            ? "StealthPrompt.Gemini.ApiKey"
             : "StealthPrompt.Groq.ApiKey";
     }
 

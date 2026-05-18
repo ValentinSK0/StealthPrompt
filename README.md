@@ -1,6 +1,6 @@
 # Stealth Prompt
 
-Windows tray app that sends selected text to AI via hotkeys and copies the response to clipboard. Supports Groq, local `agent.txt` context with `Alt+L`, secure key storage, and latest-run logs.
+Windows tray app that sends selected text to AI via hotkeys and copies the response to clipboard. Supports Groq or Gemini, local `agent.txt` context with `Alt+L`, secure key storage, and latest-run logs.
 
 ## What It Does
 
@@ -15,7 +15,7 @@ Windows tray app that sends selected text to AI via hotkeys and copies the respo
 ## Features
 
 - Global hotkeys: `Alt+K` and `Alt+L`
-- Groq/OpenAI-compatible API support
+- Groq and Google AI Studio Gemini API support
 - API key stored in Windows Credential Manager
 - Local agent context file for `Alt+L`
 - Latest-run log with prompt, response, or error
@@ -37,12 +37,13 @@ The app starts in the system tray. Right-click tray icon for Settings or Quit.
 
 ## API Key
 
-Set Groq API key in Settings. It is stored in Windows Credential Manager.
+Set Groq and/or Gemini API key in Settings. Choose `groq` or `gemini` as provider. Keys are stored separately in Windows Credential Manager.
 
 Alternative:
 
 ```powershell
 $env:GROQ_API_KEY = "gsk_..."
+$env:GEMINI_API_KEY = "AIza..."
 dotnet run --project .\StealthPrompt\StealthPrompt.csproj
 ```
 
@@ -78,7 +79,7 @@ Right-click tray icon and choose `Toggle debug mode`.
 When debug is on, `Alt+K` shows:
 
 - captured selected text
-- exact prompt sent to OpenAI
+- exact prompt sent to AI provider
 - final copied response or error message
 
 ## Logs

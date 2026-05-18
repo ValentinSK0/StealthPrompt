@@ -62,20 +62,21 @@ public sealed class TrayAppContext : ApplicationContext
         }
 
         _busy = true;
+        var settings = CloneSettings(_settings);
         SetStatus(includeHrdb ? "Working with HRDB..." : "Working...");
-        var hotkeyName = includeHrdb ? _settings.HrdbHotkey : _settings.Hotkey;
+        var hotkeyName = includeHrdb ? settings.HrdbHotkey : settings.Hotkey;
         string? logSelectedText = null;
         string? logPrompt = null;
 
         try
         {
-            using var cts = new CancellationTokenSource(Math.Max(5000, _settings.TimeoutMs + 3000));
-            var capture = await _clipboard.ReadSelectedTextAsync(_settings.PreserveClipboard, cts.Token);
+            using var cts = new CancellationTokenSource(Math.Max(5000, settings.TimeoutMs + 3000));
+            var capture = await _clipboard.ReadSelectedTextAsync(settings.PreserveClipboard, cts.Token);
             var selectedText = capture.Text;
             if (string.IsNullOrWhiteSpace(selectedText))
             {
                 SetStatus("No selected text");
-                if (_settings.DebugMode)
+                if (settings.DebugMode)
                 {
                     using var manualForm = new ManualTextForm(
                         $"Alt+K fired. Capture attempts: {capture.Attempts}. {capture.Detail}");
@@ -94,12 +95,12 @@ public sealed class TrayAppContext : ApplicationContext
                 }
             }
 
-            var hrdbContext = includeHrdb ? LoadHrdbContext() : null;
-            var prompt = OpenAiClient.BuildPrompt(_settings, selectedText, hrdbContext);
+            var hrdbContext = includeHrdb ? LoadHrdbContext(settings) : null;
+            var prompt = OpenAiClient.BuildPrompt(settings, selectedText, hrdbContext);
             logSelectedText = selectedText;
             logPrompt = prompt;
             _logs.WritePending(hotkeyName, selectedText, prompt);
-            if (_settings.DebugMode)
+            if (settings.DebugMode)
             {
                 using var debugForm = new DebugPromptForm(selectedText, prompt);
                 if (debugForm.ShowDialog() != DialogResult.OK)
@@ -109,11 +110,11 @@ public sealed class TrayAppContext : ApplicationContext
                 }
             }
 
-            var response = await _openAi.SendAsync(_settings, selectedText, cts.Token, hrdbContext);
+            var response = await _openAi.SendAsync(settings, selectedText, cts.Token, hrdbContext);
             await _clipboard.SetClipboardTextAsync(response, cts.Token);
             _logs.WriteResponse(hotkeyName, selectedText, prompt, response);
             SetStatus("Response copied");
-            if (_settings.DebugMode)
+            if (settings.DebugMode)
             {
                 MessageBox.Show("Response copied to clipboard:\r\n\r\n" + response, "Stealth Prompt Debug", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -129,11 +130,11 @@ public sealed class TrayAppContext : ApplicationContext
             {
                 _logs.WriteCaptureError(hotkeyName, ex.Message);
             }
-            if (_settings.DebugMode)
+            if (settings.DebugMode)
             {
                 MessageBox.Show(ex.Message, "Stealth Prompt Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            else if (_settings.ShowToast)
+            else if (settings.ShowToast)
             {
                 _notifyIcon.ShowBalloonTip(5000, "Stealth Prompt", ex.Message, ToolTipIcon.Warning);
             }
@@ -146,6 +147,14 @@ public sealed class TrayAppContext : ApplicationContext
 
     private void ShowSettings()
     {
+        if (_busy)
+        {
+            SetStatus("Busy; try Settings after response");
+            _notifyIcon.Visible = true;
+            _notifyIcon.ShowBalloonTip(3000, "Stealth Prompt", "Wait for the current Alt+K request to finish before opening Settings.", ToolTipIcon.Info);
+            return;
+        }
+
         using var form = new SettingsForm(CloneSettings(_settings));
         if (form.ShowDialog() != DialogResult.OK)
         {
@@ -217,14 +226,14 @@ public sealed class TrayAppContext : ApplicationContext
         SetStatus(_settings.DebugMode ? "Debug mode on" : $"Ready: {_settings.Hotkey} / {_settings.HrdbHotkey}");
     }
 
-    private string LoadHrdbContext()
+    private string LoadHrdbContext(AppSettings settings)
     {
-        if (!File.Exists(_settings.HrdbPath))
+        if (!File.Exists(settings.HrdbPath))
         {
-            throw new FileNotFoundException("HRDB file not found.", _settings.HrdbPath);
+            throw new FileNotFoundException("HRDB file not found.", settings.HrdbPath);
         }
 
-        return File.ReadAllText(_settings.HrdbPath);
+        return File.ReadAllText(settings.HrdbPath);
     }
 
     private void OpenLogs()
