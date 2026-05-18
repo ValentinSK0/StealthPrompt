@@ -3,7 +3,7 @@ namespace StealthPrompt;
 public sealed class SettingsForm : Form
 {
     private readonly TextBox _apiKey = new() { UseSystemPasswordChar = true };
-    private readonly Button _saveApiKey = new() { Text = "Save API key now" };
+    private readonly Button _saveApiKey = new() { Text = "Save API key" };
     private readonly Label _apiKeyStatus = new() { TextAlign = ContentAlignment.MiddleLeft };
     private readonly ComboBox _provider = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _hotkey = new();
@@ -97,13 +97,15 @@ public sealed class SettingsForm : Form
         var buttons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            Padding = new Padding(0, 6, 0, 0),
+            WrapContents = false
         };
-        var save = new Button { Text = "Save", DialogResult = DialogResult.OK, Width = 90 };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 90 };
+        var save = StyleButton(new Button { Text = "Save", DialogResult = DialogResult.OK }, 104);
+        var cancel = StyleButton(new Button { Text = "Cancel", DialogResult = DialogResult.Cancel }, 104);
         buttons.Controls.Add(save);
         buttons.Controls.Add(cancel);
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         root.Controls.Add(buttons, 0, 10);
         root.SetColumnSpan(buttons, 2);
 
@@ -182,10 +184,11 @@ public sealed class SettingsForm : Form
             ColumnCount = 3
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 128));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
 
         _apiKey.Dock = DockStyle.Fill;
+        StyleButton(_saveApiKey, 118);
         _saveApiKey.Dock = DockStyle.Fill;
         _apiKeyStatus.Dock = DockStyle.Fill;
         _saveApiKey.Click += (_, _) => SaveApiKeyFromField();
@@ -194,6 +197,21 @@ public sealed class SettingsForm : Form
         panel.Controls.Add(_saveApiKey, 1, 0);
         panel.Controls.Add(_apiKeyStatus, 2, 0);
         root.Controls.Add(panel, 1, row);
+    }
+
+    private static Button StyleButton(Button button, int width)
+    {
+        button.Width = width;
+        button.Height = 32;
+        button.Margin = new Padding(8, 0, 0, 0);
+        button.Padding = new Padding(8, 2, 8, 2);
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 1;
+        button.FlatAppearance.BorderColor = Color.FromArgb(70, 120, 190);
+        button.BackColor = Color.White;
+        button.ForeColor = Color.Black;
+        button.UseVisualStyleBackColor = false;
+        return button;
     }
 
     private static void AddRow(TableLayoutPanel root, int row, string label, Control control, int height)
