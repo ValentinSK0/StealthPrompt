@@ -9,11 +9,13 @@ public sealed class TrayAppContext : ApplicationContext
     private readonly Hotkey _normalHotkey = new(0x534B);
     private readonly Hotkey _hrdbHotkey = new(0x534C);
     private readonly NotifyIcon _notifyIcon;
+    private readonly Icon _trayIcon;
     private readonly ToolStripMenuItem _enabledItem;
     private readonly ToolStripMenuItem _statusItem;
     private AppSettings _settings;
     private bool _enabled = true;
     private bool _busy;
+    private bool _settingsOpen;
 
     public TrayAppContext()
     {
@@ -28,15 +30,16 @@ public sealed class TrayAppContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Toggle debug mode", null, (_, _) => ToggleDebugMode());
         menu.Items.Add("Set API key", null, (_, _) => ShowApiKeySetup());
-        menu.Items.Add("Settings", null, (_, _) => ShowSettings());
+        menu.Items.Add("Settings", null, (_, _) => QueueShowSettings(menu));
         menu.Items.Add("Logs", null, (_, _) => OpenLogs());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => ExitThread());
 
+        _trayIcon = BluetoothIconFactory.Create();
         _notifyIcon = new NotifyIcon
         {
-            Icon = BluetoothIconFactory.Create(),
+            Icon = _trayIcon,
             Text = "Bluetooth",
             ContextMenuStrip = menu,
             Visible = _settings.TrayIcon
@@ -147,6 +150,11 @@ public sealed class TrayAppContext : ApplicationContext
 
     private void ShowSettings()
     {
+        if (_settingsOpen)
+        {
+            return;
+        }
+
         if (_busy)
         {
             SetStatus("Busy; try Settings after response");
@@ -155,17 +163,40 @@ public sealed class TrayAppContext : ApplicationContext
             return;
         }
 
-        using var form = new SettingsForm(CloneSettings(_settings));
-        if (form.ShowDialog() != DialogResult.OK)
+        try
+        {
+            _settingsOpen = true;
+            using var form = new SettingsForm(CloneSettings(_settings));
+            if (form.ShowDialog() != DialogResult.OK)
+            {
+                return;
+            }
+
+            _settings = form.Settings;
+            _configStore.Save(_settings);
+            _notifyIcon.Visible = _settings.TrayIcon;
+            RegisterHotkeys();
+            SetStatus("Settings saved");
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode is 8 or 158)
+        {
+            _logs.WriteCaptureError("Settings", "Could not open Settings because Windows could not create a window handle. " + ex.Message);
+            SetStatus("Settings handle error");
+        }
+        finally
+        {
+            _settingsOpen = false;
+        }
+    }
+
+    private void QueueShowSettings(ContextMenuStrip menu)
+    {
+        if (_settingsOpen)
         {
             return;
         }
 
-        _settings = form.Settings;
-        _configStore.Save(_settings);
-        _notifyIcon.Visible = _settings.TrayIcon;
-        RegisterHotkeys();
-        SetStatus("Settings saved");
+        menu.BeginInvoke(new Action(ShowSettings));
     }
 
     private void ShowFirstRunApiKeySetup(object? sender, EventArgs e)
@@ -266,6 +297,7 @@ public sealed class TrayAppContext : ApplicationContext
         _hrdbHotkey.Dispose();
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _trayIcon.Dispose();
         base.ExitThreadCore();
     }
 

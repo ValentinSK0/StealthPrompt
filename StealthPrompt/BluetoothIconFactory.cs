@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 
 namespace StealthPrompt;
 
@@ -11,8 +12,7 @@ public static class BluetoothIconFactory
         {
             using var image = Image.FromFile(assetPath);
             using var assetBitmap = new Bitmap(image, new Size(256, 256));
-            var assetHandle = assetBitmap.GetHicon();
-            return Icon.FromHandle(assetHandle);
+            return CreateIconFromBitmap(assetBitmap);
         }
 
         using var bitmap = new Bitmap(256, 256);
@@ -56,8 +56,21 @@ public static class BluetoothIconFactory
         graphics.DrawPath(shadow, shadowGlyph);
         graphics.DrawPath(white, glyph);
 
+        return CreateIconFromBitmap(bitmap);
+    }
+
+    private static Icon CreateIconFromBitmap(Bitmap bitmap)
+    {
         var handle = bitmap.GetHicon();
-        return Icon.FromHandle(handle);
+        try
+        {
+            using var icon = Icon.FromHandle(handle);
+            return (Icon)icon.Clone();
+        }
+        finally
+        {
+            DestroyIcon(handle);
+        }
     }
 
     private static GraphicsPath BuildBluetoothGlyph()
@@ -90,4 +103,7 @@ public static class BluetoothIconFactory
         path.CloseFigure();
         return path;
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
 }

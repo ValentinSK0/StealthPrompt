@@ -2,6 +2,8 @@ namespace StealthPrompt;
 
 public sealed class DebugPromptForm : Form
 {
+    private const int MaxTextBoxChars = 60000;
+
     public DebugPromptForm(string selectedText, string prompt)
     {
         Text = "Stealth Prompt Debug";
@@ -46,11 +48,22 @@ public sealed class DebugPromptForm : Form
 
     private static TextBox ReadOnlyBox(string text) => new()
     {
-        Text = text,
+        Text = LimitForTextBox(text),
         Multiline = true,
         ReadOnly = true,
         ScrollBars = ScrollBars.Both,
         WordWrap = false,
         Dock = DockStyle.Fill
     };
+
+    private static string LimitForTextBox(string text)
+    {
+        if (text.Length <= MaxTextBoxChars)
+        {
+            return text;
+        }
+
+        return text[..MaxTextBoxChars] +
+               "\r\n\r\n[Debug preview truncated. Full prompt is still sent and written to logs.]";
+    }
 }
