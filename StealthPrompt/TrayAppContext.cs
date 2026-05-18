@@ -36,8 +36,8 @@ public sealed class TrayAppContext : ApplicationContext
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
-            Text = "Stealth Prompt",
+            Icon = BluetoothIconFactory.Create(),
+            Text = "bluetooh",
             ContextMenuStrip = menu,
             Visible = _settings.TrayIcon
         };
