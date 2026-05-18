@@ -37,7 +37,7 @@ public sealed class TrayAppContext : ApplicationContext
         _notifyIcon = new NotifyIcon
         {
             Icon = BluetoothIconFactory.Create(),
-            Text = "bluetooh",
+            Text = "Bluetooth",
             ContextMenuStrip = menu,
             Visible = _settings.TrayIcon
         };
